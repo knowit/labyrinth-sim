@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Target Name="UnityBuildTask" BeforeTargets="Build">
+      <Exec 
+        Command="'C:\Program Files\Unity\Hub\Editor\2019.2.10f1\Editor\Unity.exe' -quit -batchmode -projectPath '$(ProjectDir)..\simulator' -executeMethod Build.Windows"
+        IgnoreExitCode="true"/>
+  </Target>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <RootNamespace>labyrinth.runner</RootNamespace>
+  </PropertyGroup>
+
+</Project>

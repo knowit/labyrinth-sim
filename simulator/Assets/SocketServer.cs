@@ -30,14 +30,24 @@ public class ClientConnection
                     return;
                 }
 
-                var bytes = _client.Receive(buffer, SocketFlags.None);
-                if (bytes > 0)
+                try
                 {
-                    using (var ms = new MemoryStream(buffer))
-                        onData(GameUpdate.Parser.ParseDelimitedFrom(ms));
+                    var bytes = _client.Receive(buffer, SocketFlags.None);
+                    if (bytes > 0)
+                    {
+                        using (var ms = new MemoryStream(buffer))
+                            onData(GameUpdate.Parser.ParseDelimitedFrom(ms));
+                    }
+                }
+                catch (SocketException e)
+                {
+                    Debug.LogError(e);
+                    if (_client.Connected)
+                        _client.Shutdown(SocketShutdown.Both);
+                    _onClose();
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(100));
+                await Task.Yield();
             };
         });
     }
@@ -50,32 +60,43 @@ public class ClientConnection
             return;
         }
 
-        using (var ms = new MemoryStream())
+        try
         {
-            update.WriteDelimitedTo(ms);
-            var bytes = ms.ToArray();
-
-            await Task.Run(() =>
+            using (var ms = new MemoryStream())
             {
-                _client.Send(bytes);
-            });
+                update.WriteDelimitedTo(ms);
+                var bytes = ms.ToArray();
+
+                await Task.Run(() =>
+                {
+                    _client.Send(bytes);
+                });
+            }
+        } 
+        catch (SocketException e) 
+        {
+            Debug.LogError(e);
+            if (_client.Connected)
+                _client.Shutdown(SocketShutdown.Both);
+            _onClose();
         }
     }
 };
 
 public class SocketServer
 {
-    private readonly Socket _listener;
 
-    public SocketServer(int port)
+    public async static Task<ClientConnection> WaitForClient(int port, Action<GameUpdate> onData, Action onClose)
     {
-        _listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
-        _listener.Bind(new IPEndPoint(IPAddress.Loopback, port));
-    }
-
-    public async Task<ClientConnection> WaitForClient(Action<GameUpdate> onData, Action onClose)
-    {
-        _listener.Listen(100);
-        return new ClientConnection(await _listener.AcceptAsync(), onData, onClose);
+        var endpoint = new IPEndPoint(IPAddress.Loopback, port);
+        var listener = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        Debug.Log($"Bind socket {endpoint.Address}:{endpoint.Port}");
+        
+        listener.Bind(endpoint);
+        listener.Listen(100);
+        
+        var connection = new ClientConnection(await listener.AcceptAsync(), onData, onClose);
+        listener.Close();
+        return connection;
     }
 }

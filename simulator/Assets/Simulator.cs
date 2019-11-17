@@ -11,16 +11,10 @@ public class Simulator : MonoBehaviour
     private Rigidbody _ballInstance;
     private ClientConnection _connection;
 
-    private SocketServer _server;
-
-    void Awake()
-    {
-        _server = new SocketServer(Port);
-    }
-
     async void Start()
     {
-        _connection = await _server.WaitForClient(
+        _connection = await SocketServer.WaitForClient(
+            port: Port,
             update =>
             {
                 if (update.Event == GameEvent.VrOrientation)
@@ -52,10 +46,13 @@ public class Simulator : MonoBehaviour
             await _connection.Send(new GameUpdate
             {
                 Event = GameEvent.LabyrinthState,
-                Data = new LabyrinthStateUpdate
+                Data = new GameMessage
                 {
-                    Position = _ballInstance.position.ToNormalizedCoordinate(),
-                    BoardOrientation = Board.rotation.ToEulerRotationXZ()
+                    LabyrinthStateUpdate = new LabyrinthStateUpdate
+                    {
+                        Position = _ballInstance.position.ToNormalizedCoordinate(),
+                        BoardOrientation = Board.rotation.ToEulerRotationXZ()
+                    }
                 }
             });
         }

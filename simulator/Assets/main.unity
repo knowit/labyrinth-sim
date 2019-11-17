@@ -245,6 +245,7 @@ MonoBehaviour:
   BallPrefab: {fileID: 2614197861942546664, guid: 4b8904f617ff95b42a9bd153813d3103,
     type: 3}
   Board: {fileID: 8296172669481211528}
+  BulletPrefab: {fileID: 0}
 --- !u!4 &1796572155
 Transform:
   m_ObjectHideFlags: 0
@@ -438,11 +439,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5824209654840012938, guid: 250733addb768e94987b154a5bcd6791,
-        type: 3}
-      propertyPath: m_CollisionDetection
-      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 250733addb768e94987b154a5bcd6791, type: 3}

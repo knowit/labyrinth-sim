@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Simulator : MonoBehaviour
 {
@@ -10,17 +11,35 @@ public class Simulator : MonoBehaviour
     private Rigidbody _ballInstance;
     private ClientConnection _connection;
 
+    private SocketServer _server;
+
+    void Awake()
+    {
+        _server = new SocketServer(Port);
+    }
+
     async void Start()
     {
-        _connection = await SocketServer.Open(Port, update =>
-        {
-            if (update.Event == GameEvent.VrOrientation)
+        _connection = await _server.WaitForClient(
+            update =>
             {
-                var rot = update.Data
-                    .VrOrientationUpdate
-                    .Orientation.ToUnityQuaternionAsEulerRotationXZ();
-                Board.MoveRotation(rot);
-            }
+                if (update.Event == GameEvent.VrOrientation)
+                {
+                    Board.MoveRotation(update.Data
+                        .VrOrientationUpdate
+                        .Orientation.ToUnityQuaternionAsEulerRotationXZ());
+                }
+            },
+            () =>
+            {
+                // Reload scene on close connection
+                SceneManager.LoadScene(
+                    SceneManager.GetActiveScene().buildIndex, LoadSceneMode.Single);
+            });
+
+        await _connection.Send(new GameUpdate
+        {
+            Event = GameEvent.Playing
         });
 
         _ballInstance = Instantiate(BallPrefab, SpawnLocation.position, SpawnLocation.rotation);

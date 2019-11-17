@@ -11,22 +11,30 @@ using UnityEngine;
 public class ClientConnection
 {
     private readonly Socket _client;
+    private readonly Action _onClose;
 
-    public ClientConnection(Socket client, Action<GameUpdate> callback)
+    public ClientConnection(Socket client, Action<GameUpdate> onData, Action onClose)
     {
         _client = client;
+        _onClose = onClose;
         Debug.Log($"Connected to {client.RemoteEndPoint.ToString()}");
-
+        
         Task.Run(async () =>
         {
             var buffer = new byte[1024];
             while (true)
             {
+                if (!_client.Connected)
+                {
+                    _onClose();
+                    return;
+                }
+
                 var bytes = _client.Receive(buffer, SocketFlags.None);
                 if (bytes > 0)
                 {
                     using (var ms = new MemoryStream(buffer))
-                        callback(GameUpdate.Parser.ParseDelimitedFrom(ms));
+                        onData(GameUpdate.Parser.ParseDelimitedFrom(ms));
                 }
 
                 await Task.Delay(TimeSpan.FromMilliseconds(100));
@@ -36,6 +44,12 @@ public class ClientConnection
 
     public async Task Send(GameUpdate update)
     {
+        if (!_client.Connected)
+        {
+            _onClose();
+            return;
+        }
+
         using (var ms = new MemoryStream())
         {
             update.WriteDelimitedTo(ms);
@@ -51,14 +65,17 @@ public class ClientConnection
 
 public class SocketServer
 {
-    public async static Task<ClientConnection> Open(int port, Action<GameUpdate> callback)
+    private readonly Socket _listener;
+
+    public SocketServer(int port)
     {
-        var listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
-        var localEndPoint = new IPEndPoint(IPAddress.Loopback, port);
+        _listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
+        _listener.Bind(new IPEndPoint(IPAddress.Loopback, port));
+    }
 
-        listener.Bind(localEndPoint);
-        listener.Listen(100);
-
-        return new ClientConnection(await listener.AcceptAsync(), callback);
+    public async Task<ClientConnection> WaitForClient(Action<GameUpdate> onData, Action onClose)
+    {
+        _listener.Listen(100);
+        return new ClientConnection(await _listener.AcceptAsync(), onData, onClose);
     }
 }

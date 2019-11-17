@@ -13,12 +13,14 @@ public class Simulator : MonoBehaviour
 
     async void Start()
     {
+        Debug.Log("Waiting for connection");
         _connection = await SocketServer.WaitForClient(
             port: Port,
             update =>
             {
                 if (update.Event == GameEvent.VrOrientation)
                 {
+                    Debug.Log("Received event 'VrOrientation'");
                     Board.MoveRotation(update.Data
                         .VrOrientationUpdate
                         .Orientation.ToUnityQuaternionAsEulerRotationXZ());
@@ -27,16 +29,19 @@ public class Simulator : MonoBehaviour
             () =>
             {
                 // Reload scene on close connection
+                Debug.Log("Connection closed");
                 SceneManager.LoadScene(
                     SceneManager.GetActiveScene().buildIndex, LoadSceneMode.Single);
             });
 
+        Debug.Log("Starting new game");
+        _ballInstance = Instantiate(BallPrefab, SpawnLocation.position, SpawnLocation.rotation);
+
+        Debug.Log("Sending 'Playing' event to client");
         await _connection.Send(new GameUpdate
         {
             Event = GameEvent.Playing
         });
-
-        _ballInstance = Instantiate(BallPrefab, SpawnLocation.position, SpawnLocation.rotation);
     }
 
     async void LateUpdate()

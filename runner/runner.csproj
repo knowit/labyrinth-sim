@@ -1,9 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Target Name="UnityBuildTask" BeforeTargets="Build">
-      <Exec 
-        Command="'C:\Program Files\Unity\Hub\Editor\2019.2.10f1\Editor\Unity.exe' -quit -batchmode -projectPath '$(ProjectDir)..\simulator' -executeMethod Build.Windows"
-        IgnoreExitCode="true"/>
+  <ItemGroup>
+    <SimulatorSource Include="../simulator/**/*" />
+  </ItemGroup>
+  
+  <Target Name="UnityBuildTaskWindows" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'" Inputs="@(SimulatorSource)" Outputs="simulator.exe">
+    <Exec Command="powershell -File build-unity.ps1 $(OutputPath)" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="OutputOfExec" />
+    </Exec>
+  </Target>
+
+  <Target Name="UnityBuildTaskUnix" AfterTargets="Build" Condition="'$(OS)' != 'Windows_NT'" Inputs="@(SimulatorSource)" Outputs="simulator.exe">
+    <Exec Command="./build-unity.sh $(OutputPath)" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="OutputOfExec" />
+    </Exec>
   </Target>
 
   <PropertyGroup>

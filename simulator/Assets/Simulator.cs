@@ -23,7 +23,7 @@ public class Simulator : MonoBehaviour
                     Debug.Log("Received event 'VrOrientation'");
                     Board.MoveRotation(update.Data
                         .VrOrientationUpdate
-                        .Orientation.ToUnityQuaternionAsEulerRotationXZ());
+                        .Orientation.ToQuaternion());
                 }
             },
             () =>

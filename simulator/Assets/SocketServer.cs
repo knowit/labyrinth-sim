@@ -21,7 +21,7 @@ public class ClientConnection
         
         Task.Run(async () =>
         {
-            var buffer = new byte[1024];
+            var buffer = new byte[4096];
             while (true)
             {
                 if (!_client.Connected)

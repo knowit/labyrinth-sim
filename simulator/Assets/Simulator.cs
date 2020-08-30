@@ -1,65 +1,49 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Net.Mqtt;
+using System;
 
 public class Simulator : MonoBehaviour
 {
-    public int Port = 11000;
-    public Transform SpawnLocation;
-    public Rigidbody BallPrefab;
-    public Rigidbody Board;
+    public string MqttHost = "127.0.0.1";
+    public int MqttPort = 1883;
 
-    private Rigidbody _ballInstance;
-    private ClientConnection _connection;
+    //public Transform SpawnLocation;
+    //public Rigidbody BallPrefab;
+    //public Rigidbody Board;
+
+    //private Rigidbody _ballInstance;
+
+    private List<ILabyrinthSystem> _systems = new List<ILabyrinthSystem>()
+    {
+        new BoardSystem(),
+        new CameraSystem()
+    };
 
     async void Start()
     {
-        Debug.Log("Waiting for connection");
-        _connection = await SocketServer.WaitForClient(
-            port: Port,
-            update =>
-            {
-                if (update.Event == GameEvent.VrOrientation)
-                {
-                    Debug.Log("Received event 'VrOrientation'");
-                    Board.MoveRotation(update.Data
-                        .VrOrientationUpdate
-                        .Orientation.ToQuaternion());
-                }
-            },
-            () =>
-            {
-                // Reload scene on close connection
-                Debug.Log("Connection closed");
-                SceneManager.LoadScene(
-                    SceneManager.GetActiveScene().buildIndex, LoadSceneMode.Single);
-            });
+        await Task.WhenAll(_systems.Select(async system => {
+            var mqttClient = await MqttClient.CreateAsync(MqttHost, MqttPort);
+            mqttClient.MessageStream.Subscribe(message =>
+                system.TopicReceived(
+                    message.Topic, 
+                    new Mqtt.MessageLoader { raw = message.Payload }, mqttClient));
 
-        Debug.Log("Starting new game");
-        _ballInstance = Instantiate(BallPrefab, SpawnLocation.position, SpawnLocation.rotation);
+            var session = await mqttClient.ConnectAsync();
+            if (session == SessionState.CleanSession)
+            {
+               await system.SetupMqtt(mqttClient);
+            }
 
-        Debug.Log("Sending 'Playing' event to client");
-        await _connection.Send(new GameUpdate
-        {
-            Event = GameEvent.Playing
-        });
+            return system.Start(mqttClient);
+        }));
     }
 
-    async void LateUpdate()
+    void LateUpdate()
     {
-        if (_ballInstance != null && _connection != null)
-        {
-            await _connection.Send(new GameUpdate
-            {
-                Event = GameEvent.LabyrinthState,
-                Data = new GameMessage
-                {
-                    LabyrinthStateUpdate = new LabyrinthStateUpdate
-                    {
-                        Position = _ballInstance.position.ToNormalizedCoordinate(),
-                        BoardOrientation = Board.rotation.ToEulerRotationXZ()
-                    }
-                }
-            });
-        }
+        _systems.ForEach(x => x.Update());
     }
 }

@@ -5,6 +5,18 @@ using UnityEngine;
 
 public class BoardSystem : ILabyrinthSystem
 {
+    private string _vrAddress = null;
+
+    public int BasePort = 4049;
+
+    private int _boardStatePort => BasePort + 1;
+    private int _joystickStatePort => BasePort + 2;
+
+    public OutboundChannel<BoardState> BoardStateChannel { get; private set; } = null;
+
+    public InboundChannel<JoystickState> JoystickStateChannel { get; private set; } = null;
+
+
     public async Task SetupMqtt(IMqttClient mqttClient)
     {
         await mqttClient.SubscribeAsync(
@@ -20,6 +32,8 @@ public class BoardSystem : ILabyrinthSystem
                     address = this.GetLocalIPAddress()
             }.AsMessage("labyrinth/board/online"),
             MqttQualityOfService.AtLeastOnce);
+
+        JoystickStateChannel = new InboundChannel<JoystickState>(_joystickStatePort);
     }
 
     public void TopicReceived(string topic, Mqtt.MessageLoader message, IMqttClient mqttClient)
@@ -28,17 +42,35 @@ public class BoardSystem : ILabyrinthSystem
         {
             case "labyrinth/vr/online":
                 var msg = message.AsMessage<Mqtt.SystemOnline>();
-                Debug.Log($"[Board] Message from VR {msg.address}");
+                if(_vrAddress != msg.address)
+                {
+                    _vrAddress = msg.address;
 
-                mqttClient.PublishAsync(
-                    new Mqtt.SystemOnline
-                    {
-                        address = this.GetLocalIPAddress()
-                    }.AsMessage("labyrinth/board/online"),
-                    MqttQualityOfService.AtLeastOnce);
+                    Debug.Log($"[Board] Message from VR {_vrAddress}");
+
+                    mqttClient.PublishAsync(
+                        new Mqtt.SystemOnline
+                        {
+                            address = this.GetLocalIPAddress()
+                        }.AsMessage("labyrinth/board/online"),
+                        MqttQualityOfService.AtLeastOnce);
+
+                    BoardStateChannel = new OutboundChannel<BoardState>(_vrAddress, _boardStatePort);
+                }
+
                 break;
         }
     }
 
-    public void Update() { }
+    public void Update() 
+    {
+        if (BoardStateChannel != null)
+        {
+            _ = BoardStateChannel.Send(new BoardState
+            {
+                Orientation = new Vec2 { X = 0.0f, Y = 0.0f }
+            });
+        }
+        
+    }
 }

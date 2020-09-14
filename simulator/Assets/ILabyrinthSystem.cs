@@ -19,7 +19,7 @@ public static class LabyrinthSystemExtension
 {
     public static string GetLocalIPAddress(this ILabyrinthSystem _)
         => Dns.GetHostEntry(Dns.GetHostName())
-        .AddressList
-        .First(x => x.AddressFamily == AddressFamily.InterNetwork)
-        .ToString();
+            .AddressList
+            .First(x => x.AddressFamily == AddressFamily.InterNetwork)
+            .ToString();
 }

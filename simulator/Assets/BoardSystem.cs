@@ -66,9 +66,12 @@ public class BoardSystem : ILabyrinthSystem
     {
         if (BoardStateChannel != null)
         {
-            _ = BoardStateChannel.Send(new BoardState
+            BoardStateChannel.Send(new BoardState
             {
-                Orientation = new Vec2 { X = 0.0f, Y = 0.0f }
+                Orientation = new Vec2 { 
+                    X = UnityEngine.Random.Range(-1.0f, 1.0f), 
+                    Y = UnityEngine.Random.Range(-1.0f, 1.0f)
+                }
             });
         }
         

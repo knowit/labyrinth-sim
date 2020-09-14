@@ -63,9 +63,12 @@ public class CameraSystem : ILabyrinthSystem
     {
         if (BallStateChannel != null)
         {
-            _ = BallStateChannel.Send(new BallState
+            BallStateChannel.Send(new BallState
             {
-                Position = new Vec2 { X = 0.0f, Y = 0.0f }
+                Position = new Vec2 {
+                    X = UnityEngine.Random.Range(-1.0f, 1.0f),
+                    Y = UnityEngine.Random.Range(-1.0f, 1.0f)
+                }
             });
         }
     }

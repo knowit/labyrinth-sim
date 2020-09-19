@@ -7,14 +7,8 @@ public class BoardSystem : ILabyrinthSystem
 {
     private string _vrAddress = null;
 
-    public int BasePort = 4049;
-
-    private int _boardStatePort => BasePort + 1;
-    private int _joystickStatePort => BasePort + 2;
-
-    public OutboundChannel<BoardState> BoardStateChannel { get; private set; } = null;
-
-    public InboundChannel<JoystickState> JoystickStateChannel { get; private set; } = null;
+    private OutboundChannel<BoardState> _boardStateChannel = null;
+    private InboundChannel<JoystickState> _joystickStateChannel  = null;
 
 
     public async Task SetupMqtt(IMqttClient mqttClient)
@@ -33,7 +27,16 @@ public class BoardSystem : ILabyrinthSystem
             }.AsMessage("labyrinth/board/online"),
             MqttQualityOfService.AtLeastOnce);
 
-        JoystickStateChannel = new InboundChannel<JoystickState>(_joystickStatePort);
+        _joystickStateChannel = new InboundChannel<JoystickState>(this.GetSimulator().JoystickStatePort);
+    }
+
+    public void Start (string vrAddress)
+    {
+        _vrAddress = vrAddress;
+        _joystickStateChannel = new InboundChannel<JoystickState>(
+            this.GetSimulator().JoystickStatePort);
+        _boardStateChannel = new OutboundChannel<BoardState>(
+            vrAddress, this.GetSimulator().BoardStatePort);
     }
 
     public void TopicReceived(string topic, Mqtt.MessageLoader message, IMqttClient mqttClient)
@@ -45,35 +48,35 @@ public class BoardSystem : ILabyrinthSystem
                 if(_vrAddress != msg.address)
                 {
                     _vrAddress = msg.address;
-
                     Debug.Log($"[Board] Message from VR {_vrAddress}");
 
-                    mqttClient.PublishAsync(
-                        new Mqtt.SystemOnline
-                        {
-                            address = this.GetLocalIPAddress()
-                        }.AsMessage("labyrinth/board/online"),
-                        MqttQualityOfService.AtLeastOnce);
-
-                    BoardStateChannel = new OutboundChannel<BoardState>(_vrAddress, _boardStatePort);
+                    _boardStateChannel = new OutboundChannel<BoardState>(
+                        _vrAddress, this.GetSimulator().BoardStatePort);
                 }
-
                 break;
         }
     }
 
     public void Update() 
     {
-        if (BoardStateChannel != null)
+        var board = this.GetSimulator().Board;
+
+        if (_boardStateChannel != null)
         {
-            BoardStateChannel.Send(new BoardState
+            var rotation = board.rotation.ToEulerRotationXZ().WrapAngles();
+            _boardStateChannel.Send(new BoardState
             {
-                Orientation = new Vec2 { 
-                    X = UnityEngine.Random.Range(-1.0f, 1.0f), 
-                    Y = UnityEngine.Random.Range(-1.0f, 1.0f)
-                }
+                Orientation = rotation
             });
         }
         
+        if(_joystickStateChannel != null && _joystickStateChannel.Message != null)
+        {
+            var lastMessage = _joystickStateChannel.Message;
+            board.MoveRotation(Quaternion.RotateTowards(
+                board.rotation,
+                lastMessage.Orientation.ToQuaternion(),
+                5.0f));
+        }
     }
 }

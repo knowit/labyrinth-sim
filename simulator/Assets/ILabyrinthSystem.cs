@@ -12,6 +12,8 @@ public interface ILabyrinthSystem
     
     Task Start(IMqttClient mqttClient);
 
+    void Start(string vrAddress);
+
     void Update();
 }
 
@@ -22,4 +24,7 @@ public static class LabyrinthSystemExtension
             .AddressList
             .First(x => x.AddressFamily == AddressFamily.InterNetwork)
             .ToString();
+
+    public static ISimulator GetSimulator(this ILabyrinthSystem _)
+        => UnityEngine.Object.FindObjectOfType<SimulatorDirect>();
 }

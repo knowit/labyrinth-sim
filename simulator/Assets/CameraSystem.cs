@@ -8,12 +8,7 @@ public class CameraSystem : ILabyrinthSystem
 {
     private string _vrAddress = null;
 
-    public int BasePort = 4049;
-
-    private int _ballStatePort => BasePort;
-
-
-    public OutboundChannel<BallState> BallStateChannel { get; private set; } = null;
+    private OutboundChannel<BallState> _ballStateChannel = null;
 
 
     public async Task SetupMqtt(IMqttClient mqttClient)
@@ -33,6 +28,13 @@ public class CameraSystem : ILabyrinthSystem
             MqttQualityOfService.AtLeastOnce);
     }
 
+    public void Start(string vrAddress)
+    {
+        _vrAddress = vrAddress;
+        _ballStateChannel = new OutboundChannel<BallState>(
+                _vrAddress, this.GetSimulator().BallStatePort);
+    }
+
     public void TopicReceived(string topic, Mqtt.MessageLoader message, IMqttClient mqttClient)
     {
         switch (topic)
@@ -43,17 +45,10 @@ public class CameraSystem : ILabyrinthSystem
                 if (_vrAddress != msg.address)
                 {
                     _vrAddress = msg.address;
-
                     Debug.Log($"[Camera] Message from VR {msg.address}");
 
-                    mqttClient.PublishAsync(
-                        new Mqtt.SystemOnline
-                        {
-                            address = this.GetLocalIPAddress()
-                        }.AsMessage("labyrinth/camera/online"),
-                        MqttQualityOfService.AtLeastOnce);
-
-                    BallStateChannel = new OutboundChannel<BallState>(_vrAddress, _ballStatePort);
+                    _ballStateChannel = new OutboundChannel<BallState>(
+                        _vrAddress, this.GetSimulator().BallStatePort);
                 }
                 break;
         }
@@ -61,15 +56,5 @@ public class CameraSystem : ILabyrinthSystem
 
     public void Update()
     {
-        if (BallStateChannel != null)
-        {
-            BallStateChannel.Send(new BallState
-            {
-                Position = new Vec2 {
-                    X = UnityEngine.Random.Range(-1.0f, 1.0f),
-                    Y = UnityEngine.Random.Range(-1.0f, 1.0f)
-                }
-            });
-        }
     }
 }

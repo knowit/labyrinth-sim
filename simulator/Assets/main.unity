@@ -242,11 +242,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 1796572153}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 666af2497c4ffb84ab16d738b9352ee7, type: 3}
+  m_Script: {fileID: 11500000, guid: 1b3391912a2589d41811913851dd60af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MqttHost: 127.0.0.1
-  MqttPort: 1883
+  SpawnLocation: {fileID: 1886117884}
+  BallPrefab: {fileID: 2614197861942546664, guid: 4b8904f617ff95b42a9bd153813d3103,
+    type: 3}
+  Board: {fileID: 2590223740840764931}
+  VrAddress: 127.0.0.1
+  BoardStatePort: 4049
+  JoystickStatePort: 4050
+  BallStatePort: 4051
 --- !u!4 &1796572155
 Transform:
   m_ObjectHideFlags: 0
@@ -443,3 +449,9 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 250733addb768e94987b154a5bcd6791, type: 3}
+--- !u!54 &2590223740840764931 stripped
+Rigidbody:
+  m_CorrespondingSourceObject: {fileID: 5824209654840012938, guid: 250733addb768e94987b154a5bcd6791,
+    type: 3}
+  m_PrefabInstance: {fileID: 2590223740840764930}
+  m_PrefabAsset: {fileID: 0}
